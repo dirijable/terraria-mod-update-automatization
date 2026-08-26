@@ -21,7 +21,9 @@ func Decode(r io.Reader) (Cache, error) {
 }
 
 func Encode(w io.Writer, cache Cache) error {
-	return json.NewEncoder(w).Encode(cache)
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "    ")
+	return encoder.Encode(cache)
 }
 
 func LoadCacheFromFile(path string) (Cache, error) {

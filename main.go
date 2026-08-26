@@ -1,90 +1,113 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
-	"sync"
 )
 
-//~/Space/DevOps/terka/terraria-server
 // D:\SSSteam\steamapps\workshop\content\1281930
+// C:\Users\user\Space\DevOps\terka\terraria-server\terraria-server
 
-type TModDir struct {
-	dir      string
-	tmodFile string
-}
+const (
+	steamAPIURL = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
+	cacheFile   = "mods_cache_dirijable.json"
+)
 
 func main() {
-	pathToTModSteamContent := flag.String("p", "", "-p [path]")
+	pathToSteamTModontent := flag.String("sp", "", "path to steam workshop tmodloader content")
+	pathToRepo := flag.String("pp", "", "path to server git repo dir") 
 	flag.Parse()
-	if *pathToTModSteamContent == "" {
-		fmt.Println("you should give the path")
+	if *pathToSteamTModontent == "" {
+		fmt.Println("Usage: program -sp [path_to_steam_content]")
 		os.Exit(1)
 	}
-	// file, err := os.OpenFile("hashes.txt", os.O_CREATE|os.O_RDWR, 0666)
-	// if err != nil {
-	// 	fmt.Printf("open file: %v", err)
-	// 	os.Exit(1)
-	// }
-	// defer file.Close()
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	fileMap := make(map[string]TModDir)
-	go func ()  {
-		defer wg.Done()
-		_ = GetNewest(*pathToTModSteamContent, fileMap)
-	}()
-		
-}
-
-func GetNewest(dir string, fileMap map[string]TModDir) error {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
+	if *pathToRepo == "" {
+		fmt.Println("Usage: program -pp [path_to_server_git_dir]")
+		os.Exit(1)
 	}
-	for _, e := range entries {
-		if e.IsDir() {
-			path := filepath.Join(dir, e.Name())
-			if err := GetNewest(path, fileMap); err != nil {
-				return err
-			}
-		} else {
-			if !strings.HasSuffix(e.Name(), ".tmod") {
+
+	cleanedPath := filepath.Clean(*pathToSteamTModontent)
+
+	filteredDirs := MustFilteredDirsFromPath(cleanedPath)
+	localTmodPaths := LatestTmodFiles(cleanedPath, filteredDirs)
+	if len(localTmodPaths) == 0 {
+		log.Println("No valid tmod files found on disk.")
+		return
+	}
+
+	formData := SetUrlValues(MapToSliceOfKeys(localTmodPaths))
+
+	resp, err := http.PostForm(steamAPIURL, formData)
+	if err != nil {
+		log.Fatalf("post mod ids to steam: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var steamResp SteamResponse
+	if err := json.NewDecoder(resp.Body).Decode(&steamResp); err != nil {
+		log.Fatalf("parse steam json response: %v", err)
+	}
+
+	cache, err := LoadCacheFromFile(cacheFile)
+	if err != nil {
+		log.Fatalf("failed to load cache: %v", err)
+	}
+
+	modsToUpdate := make(map[string]string)
+	for _, detail := range steamResp.Response.FileDetails {
+		if detail.Result != 1 {
+			log.Printf("mod id=%s skipped (banned/deleted, result=%d)", detail.PublishedFileId, detail.Result)
+			continue
+		}
+
+		cachedTime := cache[detail.PublishedFileId]
+		if detail.TimeUpdated > cachedTime {
+			srcPath, ok := localTmodPaths[detail.PublishedFileId]
+			if !ok {
 				continue
 			}
-			parentDir := filepath.Dir(dir)
-			baseDir := filepath.Base(dir)
-			if existedDir, ok := fileMap[parentDir]; !ok || isNewer(baseDir, existedDir.dir) {
-				fileMap[parentDir] = TModDir{
-					dir:      baseDir,
-					tmodFile: filepath.Join(dir, e.Name())}
-			}
+
+			modsToUpdate[detail.PublishedFileId] = srcPath
+			cache[detail.PublishedFileId] = detail.TimeUpdated
 		}
 	}
-	return nil
+
+	if len(modsToUpdate) == 0 {
+		log.Println("All mods are up to date.")
+		return
+	}	
+
+	log.Printf("Found %d updated mod(s). Starting deploy...", len(modsToUpdate))
+
+	if err := SyncRepo(*pathToRepo); err != nil {
+		log.Fatalf("git sync failed: %v", err)
+	}
+
+	if err := CopyUpdatedMods(filepath.Join(*pathToRepo, "Postavka"), modsToUpdate); err != nil {
+		log.Fatalf("copy updated mods failed: %v", err)
+	}
+
+	if err := SaveCacheToFile(cacheFile, cache); err != nil {
+		log.Fatalf("failed to save cache: %v", err)
+	}
+
+	if err := PushUpdates(*pathToRepo, "auto-update tModLoader mods"); err != nil {
+		log.Fatalf("git push failed: %v", err)
+	}
+
+	log.Println("Successfully updated and pushed mods!")
 }
 
-func isNewer(current, existed string) bool {
-	currParts := strings.Split(current, ".")
-	exParts := strings.Split(existed, ".")
-
-	if len(currParts) != 2 || len(exParts) != 2 {
-		return current > existed 
+func MapToSliceOfKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
 	}
-
-	currYear, _ := strconv.Atoi(currParts[0])
-	currMonth, _ := strconv.Atoi(currParts[1])
-
-	exYear, _ := strconv.Atoi(exParts[0])
-	exMonth, _ := strconv.Atoi(exParts[1])
-
-	if currYear != exYear {
-		return currYear > exYear
-	}
-	return currMonth > exMonth
+	return keys
 }

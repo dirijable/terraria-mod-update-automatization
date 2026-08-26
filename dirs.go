@@ -13,8 +13,8 @@ func FilteredDirsFromPath(path string) ([]os.DirEntry, error) {
 	return Filter(entries, OnlyDirPredicate), nil
 }
 
-func MustDirsFromPath(path string) []os.DirEntry {
-	dirs, err := os.ReadDir(path)
+func MustFilteredDirsFromPath(path string) []os.DirEntry {
+	dirs, err := FilteredDirsFromPath(path)
 	if err != nil {
 		log.Fatalf("get tmod ids: %v", err)
 	}
