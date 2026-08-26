@@ -1,0 +1,33 @@
+{
+    "response": {
+        "result": 1,
+        "resultcount": 1,
+        "publishedfiledetails": [
+            {
+                "publishedfileid": "2824681665",
+                "result": 1,
+                "creator": "76561198031580227",
+                "creator_app_id": 1281930,
+                "consumer_app_id": 1281930,
+                "filename": "",
+                "file_size": "4520304",
+                "file_url": "https://akamaihd.net...",
+                "hcontent_file": "184759201948572019",
+                "title": "Magic Storage",
+                "description": "Adds a virtual storage system to Terraria.",
+                "time_created": 1658425600,
+                "time_updated": 1711820400, 
+                "visibility": 0,
+                "banned": 0,
+                "ban_reason": "",
+                "subscriptions": 954000,
+                "favorited": 42000,
+                "views": 2100000,
+                "tags": [
+                    { "tag": "Mod" },
+                    { "tag": "Storage" }
+                ]
+            }
+        ]
+    }
+}

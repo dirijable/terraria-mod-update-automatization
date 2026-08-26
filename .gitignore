@@ -1,0 +1,5 @@
+*.exe
+mod_sync
+mods_cache*.json
+.idea/
+.vscode/
