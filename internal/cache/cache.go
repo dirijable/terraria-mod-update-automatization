@@ -10,10 +10,6 @@ import (
 
 type Cache map[string]int64
 
-func (c Cache) SaveCacheToFile(cacheFile string, cache Cache) any {
-	panic("unimplemented")
-}
-
 func NewCache() Cache {
 	return make(Cache)
 }

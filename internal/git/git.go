@@ -31,6 +31,18 @@ func PushUpdates(repoPath, commitMsg string) error {
 	return nil
 }
 
+func ResetHard(repoPath string) error {
+	if err := runGitCmd(repoPath, "reset", "--hard", "origin/main"); err != nil {
+		return fmt.Errorf("git reset: %w", err)
+	}
+
+	if err := runGitCmd(repoPath, "clean", "-fd"); err != nil {
+		return fmt.Errorf("git clean: %w", err)
+	}
+	
+	return nil
+}
+
 func runGitCmd(dir string, args ...string) error {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
