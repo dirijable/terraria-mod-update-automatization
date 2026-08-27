@@ -24,7 +24,7 @@ CLI-утилита на Go для автоматической проверки 
 #### Сборка бинарника:
 
 ```bash
-go build -o mod_sync.exe .
+go build -o mod_sync.exe cmd/main.go
 
 ```
 
