@@ -57,21 +57,40 @@ func checkUpdates(cacheFilePath string, localTmodPaths map[string]string, steamR
 	}
 
 	modsToUpdate := make(map[string]string)
+	var newCount, updateCount int
+
 	for _, detail := range steamResp.Response.FileDetails {
 		if detail.Result != 1 {
 			log.Printf("mod id=%s skipped (banned/deleted, result=%d)", detail.PublishedFileId, detail.Result)
 			continue
 		}
 
-		cachedTime := cch[detail.PublishedFileId]
-		if detail.TimeUpdated > cachedTime {
-			srcPath, ok := localTmodPaths[detail.PublishedFileId]
-			if !ok {
-				continue
-			}
+		srcPath, ok := localTmodPaths[detail.PublishedFileId]
+		if !ok {
+			continue
+		}
+
+		modFileName := filepath.Base(srcPath)
+		cachedTime, exists := cch[detail.PublishedFileId]
+
+		if !exists || cachedTime == 0 {
+			log.Printf("[NEW] Found new mod: %s (ID: %s)", modFileName, detail.PublishedFileId)
 			modsToUpdate[detail.PublishedFileId] = srcPath
 			cch[detail.PublishedFileId] = detail.TimeUpdated
+			newCount++
+			continue
 		}
+
+		if detail.TimeUpdated > cachedTime {
+			log.Printf("[UPDATE] Found update for: %s (ID: %s)", modFileName, detail.PublishedFileId)
+			modsToUpdate[detail.PublishedFileId] = srcPath
+			cch[detail.PublishedFileId] = detail.TimeUpdated
+			updateCount++
+		}
+	}
+
+	if len(modsToUpdate) > 0 {
+		log.Printf("Total queued for deploy: %d (New: %d, Updates: %d)", len(modsToUpdate), newCount, updateCount)
 	}
 
 	return modsToUpdate, cch, nil
