@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"terraria-mod-update-automatization/internal/cache"
 	"terraria-mod-update-automatization/internal/git"
@@ -110,12 +112,27 @@ func deployMods(repoPath, cacheFilePath string, modsToUpdate map[string]string, 
 		return fmt.Errorf("failed to save cache: %w", err)
 	}
 
-	if err := git.PushUpdates(repoPath, "auto-update tModLoader mods"); err != nil {
+	commitMsg := generateCommitMsg(modsToUpdate)
+
+	if err := git.PushUpdates(repoPath, commitMsg); err != nil {
 		return fmt.Errorf("git push failed: %w", err)
 	}
 
 	log.Println("Successfully updated and pushed mods!")
 	return nil
+}
+
+func generateCommitMsg(modsToUpdate map[string]string) string {
+	names := make([]string, 0, len(modsToUpdate))
+	for _, srcPath := range modsToUpdate {
+		filename := filepath.Base(srcPath)
+		modName := strings.TrimSuffix(filename, filepath.Ext(filename))
+		names = append(names, modName)
+	}
+
+	sort.Strings(names)
+
+	return "update mods: " + strings.Join(names, ", ")
 }
 
 func mapKeysToSlice(m map[string]string) []string {
