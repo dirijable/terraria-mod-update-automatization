@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"terraria-mod-update-automatization/internal/app"
-	"terraria-mod-update-automatization/internal/git"
+	"github.com/dirijable/terraria-mod-update-automatization/internal/app"
+	"github.com/dirijable/terraria-mod-update-automatization/internal/git"
 )
 
 func main() {

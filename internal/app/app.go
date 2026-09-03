@@ -8,10 +8,10 @@ import (
 	"sort"
 	"strings"
 
-	"terraria-mod-update-automatization/internal/cache"
-	"terraria-mod-update-automatization/internal/git"
-	"terraria-mod-update-automatization/internal/mods"
-	"terraria-mod-update-automatization/internal/steam"
+	"github.com/dirijable/terraria-mod-update-automatization/internal/cache"
+	"github.com/dirijable/terraria-mod-update-automatization/internal/git"
+	"github.com/dirijable/terraria-mod-update-automatization/internal/mods"
+	"github.com/dirijable/terraria-mod-update-automatization/internal/steam"
 )
 
 const (
